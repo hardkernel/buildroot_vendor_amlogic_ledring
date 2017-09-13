@@ -17,13 +17,14 @@
 #include "i2cWrite.h"
 #include "leds.h"
 #include "qipc.h"
+#include "ledClient.h"
 
 int running=0;
-int recvFlag=0;
+volatile static int recvFlag=0;
 int i2cNum = -1;
 struct leds* recvBuffer;
 struct leds runState;
-messageID mID;
+static messageID mID;
 
 int speed_tab[11]={
     0,
@@ -60,6 +61,7 @@ int main(void){
     ret=pthread_create(&recvThread, NULL, pthread_recv_action, NULL);
     pthread_detach(recvThread);
     signal(SIGINT, sigint_handler);
+    printf("lightDaemon is running...\n");
     while (!running) {
     if (1 == recvFlag) {
     if (thread == 0) {
@@ -108,6 +110,7 @@ void* pthread_recv_action(void* p){
     memset(recvBuffer,'\0',sizeof(struct leds));
     //ret = pthread_mutex_lock(g_mutex);
     //if (ret!=0) perror("pthread_mutex_lock");
+    //printf("msgSize:%d\n",attr.mq_msgsize);
     recvlen = recvMessage(&mID, recvBuffer, attr.mq_msgsize);
     if (recvlen < 0) {
     //ret=pthread_mutex_unlock(g_mutex);
@@ -115,9 +118,19 @@ void* pthread_recv_action(void* p){
         continue;
     } else {
         if (recvFlag == 0) {
+#if 0
+    printf("[1]num=%d,currentNum=%d,currentColour=%d,speed=%d,times=%d,direction=%d,mode=%d\n",
+        recvBuffer->num,
+        recvBuffer->currentNum,
+        recvBuffer->currentColour,
+        recvBuffer->speed,
+        recvBuffer->times,
+        recvBuffer->direction,
+        recvBuffer->mode);
+#endif
         runState=*recvBuffer;
         recvFlag=1;
-        }
+        } else printf("recvFlag is not reset!\n");
     }
     }
 }
@@ -136,100 +149,195 @@ static void cleanup_handler(void *arg)
 }
 
 
-void* pthread_action(void* p){
+void* pthread_action(void* p) {
     int ret;
     int i=0;
     int j=0;
+    int delayFlag=1;
+    int delayTimes=0;
     struct leds* mrunState=(struct leds*)p;
+    delayTimes = mrunState->times;
     //ret = pthread_mutex_lock(g_mutex);
     //if (ret!=0) perror("pthread_mutex_lock");
     //strncpy(&mrunState,(struct leds*)p,sizeof(struct leds));
     //ret=pthread_mutex_unlock(g_mutex);
     //if(ret!=0) perror("pthread_mutex_unlock");
 
+#if 0
+    printf("[2]num=%d,currentNum=%d,currentColour=%d,speed=%d,times=%d,direction=%d,mode=%d\n",
+        mrunState->num,
+        mrunState->currentNum,
+        mrunState->currentColour,
+        mrunState->speed,
+        mrunState->times,
+        mrunState->direction,
+        mrunState->mode);
+#endif
     //pthread_cleanup_push(pthread_mutex_unlock,(void*)g_mutex);
     pthread_cleanup_push(cleanup_handler,NULL);
     while (1) {
     //ret = pthread_mutex_lock(g_mutex);
     //if (ret!=0) perror("pthread_mutex_lock");
-#if 0
-    printf("num=%d,currentNum=%d,currentColour=%d,speed=%d,direction=%d,mode=%d\n",
-        mrunState->num,
-        mrunState->currentNum,
-        mrunState->currentColour,
-        mrunState->speed,
-        mrunState->direction,
-        mrunState->mode);
-#endif
-    //sleep(1000);
-
     switch (mrunState->mode) {
         case _STATIC :
-            multipleLight(mrunState->num,
-            mrunState->currentNum,
-            mrunState->currentColour);
+        if (mrunState->times) {
+            if (delayFlag) {
+                multipleLight(mrunState->num, mrunState->currentNum, mrunState->currentColour);
+                sleep(mrunState->times);
+                delayFlag=0;
+            }
+            multipleLight(0, mrunState->currentNum, mrunState->currentColour);
             sleep(1000);
+            } else {
+                multipleLight(mrunState->num, mrunState->currentNum, mrunState->currentColour);
+                sleep(1000);
+            }
         break;
         case _MOVE :
             if (mrunState->speed > 10) {
-                multipleLight(LED_NUM,
-                mrunState->currentNum,
-                mrunState->currentColour);
-                sleep(1000);
-            } else if (mrunState->speed <= 0) {
-                multipleLight(0,
-                mrunState->currentNum,
-                mrunState->currentColour);
+            if (mrunState->times) {
+                if (delayFlag) {
+                multipleLight(LED_NUM, mrunState->currentNum, mrunState->currentColour);
+                sleep(mrunState->times);
+                delayFlag=0;
+                }
+                multipleLight(0, mrunState->currentNum, mrunState->currentColour);
                 sleep(1000);
             } else {
+                multipleLight(LED_NUM, mrunState->currentNum, mrunState->currentColour);
+                sleep(1000);
+            }
+            } else if (mrunState->speed <= 0) {
+                if (mrunState->times) {
+                    if (delayFlag) {
+                        multipleLight(mrunState->num, mrunState->currentNum, mrunState->currentColour);
+                        sleep(mrunState->times);
+                        delayFlag=0;
+                    }
+                    multipleLight(0, mrunState->currentNum, mrunState->currentColour);
+                    sleep(1000);
+                    } else {
+                    multipleLight(mrunState->num, mrunState->currentNum, mrunState->currentColour);
+                    sleep(1000);
+                    }
+            } else {
                 if (mrunState->direction == _POSITIVE) {
-                    for (i=1; i < LED_NUM+1; i++) {
-                        multipleLight(mrunState->num,
-                        LED_NUM+1-i,
-                        mrunState->currentColour);
-                        usleep(speed_tab[mrunState->speed]);
-                    }
-                } else if (mrunState->direction == _REVERSE) {
-                    for (i=1; i<LED_NUM+1; i++) {
-                        multipleLight(mrunState->num,
-                        i,
-                        mrunState->currentColour);
-                        usleep(speed_tab[mrunState->speed]);
-                    }
-                } else if (mrunState->direction == _SKIP) {
-                    for (i=0; i<LED_NUM+1; i++) {
-                        multipleLight(i,
-                        1,
-                        mrunState->currentColour);
-                        usleep(speed_tab[mrunState->speed]);
+                if (mrunState->times) {
+                    if (delayFlag) {
+                    if (delayTimes>0) {
+                        for (i=1; i < LED_NUM+1; i++) {
+                            multipleLight(mrunState->num, LED_NUM+1-i, mrunState->currentColour);
+                            usleep(speed_tab[mrunState->speed]);
+                        }
+                    } else delayFlag=0;
+                    delayTimes--;
+                    } else {
+                    multipleLight(0, mrunState->currentNum, mrunState->currentColour);
+                    sleep(1000);
                     }
                 } else {
-                    multipleLight(0,
-                    mrunState->currentNum,
-                    mrunState->currentColour);
+                    for (i=1; i < LED_NUM+1; i++) {
+                        multipleLight(mrunState->num, LED_NUM+1-i, mrunState->currentColour);
+                        usleep(speed_tab[mrunState->speed]);
+                    }
+                }
+                } else if (mrunState->direction == _REVERSE) {
+                    if (mrunState->times) {
+                    if (delayFlag) {
+                        if (delayTimes>0) {
+                            for (i=1; i<LED_NUM+1; i++) {
+                             multipleLight(mrunState->num, i, mrunState->currentColour);
+                             usleep(speed_tab[mrunState->speed]);
+                            }
+                         } else delayFlag=0;
+                     delayTimes--;
+                     } else {
+                         multipleLight(0, mrunState->currentNum, mrunState->currentColour);
+                         sleep(1000);
+                     }
+                     } else {
+                         for (i=1; i<LED_NUM+1; i++) {
+                         multipleLight(mrunState->num, i, mrunState->currentColour);
+                         usleep(speed_tab[mrunState->speed]);
+                         }
+                     }
+                } else if (mrunState->direction == _SKIP) {
+                    if (mrunState->times) {
+                    if (delayFlag) {
+                        if (delayTimes>0) {
+                        for (i=0; i<LED_NUM+1; i++) {
+                            multipleLight(i, 1, mrunState->currentColour);
+                            usleep(speed_tab[mrunState->speed]);
+                        }
+                        } else delayFlag=0;
+                        delayTimes--;
+                    } else {
+                        multipleLight(0, mrunState->currentNum, mrunState->currentColour);
+                        sleep(1000);
+                    }
+                    } else {
+                        for (i=0; i<LED_NUM+1; i++) {
+                        multipleLight(i, 1, mrunState->currentColour);
+                        usleep(speed_tab[mrunState->speed]);
+                        }
+                    }
+                } else {
+                    multipleLight(0, mrunState->currentNum, mrunState->currentColour);
                     sleep(1000);
                 }
             }
         break;
         case _CLOSE :
-            multipleLight(0,
-            mrunState->currentNum,
-            mrunState->currentColour);
+            multipleLight(0, mrunState->currentNum, mrunState->currentColour);
             sleep(1000);
         break;
         case _OTHER :
             if (mrunState->speed > 10) {
-                multipleLight(LED_NUM,
-                mrunState->currentNum,
-                mrunState->currentColour);
-                sleep(1000);
-            } else if (mrunState->speed <= 0) {
-                multipleLight(0,
-                mrunState->currentNum,
-                mrunState->currentColour);
+                if (mrunState->times) {
+                if (delayFlag) {
+                    multipleLight(LED_NUM, mrunState->currentNum, mrunState->currentColour);
+                    sleep(mrunState->times);
+                    delayFlag=0;
+                }
+                multipleLight(0, mrunState->currentNum, mrunState->currentColour);
                 sleep(1000);
             } else {
+                multipleLight(LED_NUM, mrunState->currentNum, mrunState->currentColour);
+                sleep(1000);
+            }
+            } else if (mrunState->speed <= 0) {
+                if (mrunState->times) {
+                if (delayFlag) {
+                     multipleLight(mrunState->num, mrunState->currentNum, mrunState->currentColour);
+                     sleep(mrunState->times);
+                     delayFlag=0;
+                }
+                multipleLight(0, mrunState->currentNum, mrunState->currentColour);
+                sleep(1000);
+                } else {
+                multipleLight(mrunState->num, mrunState->currentNum, mrunState->currentColour);
+                sleep(1000);
+                }
+            } else {
                 if (mrunState->direction == _POSITIVE) {
+                if (mrunState->times) {
+                if (delayFlag) {
+                if (delayTimes>0) {
+                    multipleLight(1,1,mrunState->currentColour);
+                    usleep(speed_tab[mrunState->speed]);
+                    for (i=3,j=LED_NUM;i<LED_NUM;i+=2,j--) {
+                    multipleLight(i,j,mrunState->currentColour);
+                    usleep(speed_tab[mrunState->speed]);
+                    }
+                    multipleLight(LED_NUM,j,mrunState->currentColour);
+                    usleep(speed_tab[mrunState->speed]);
+                } else delayFlag=0;
+                delayTimes--;
+                } else {
+                    multipleLight(0, mrunState->currentNum, mrunState->currentColour);
+                    sleep(1000);
+                }
+                } else {
                     multipleLight(1,1,mrunState->currentColour);
                     usleep(speed_tab[mrunState->speed]);
                     for (i=3,j=LED_NUM;i<LED_NUM;i+=2,j--) {
@@ -238,31 +346,56 @@ void* pthread_action(void* p){
                     }
                     multipleLight(LED_NUM,j,mrunState->currentColour);
                     usleep(speed_tab[mrunState->speed]);
+                }
                 } else if (mrunState->direction == _REVERSE) {
-                    for (i=1,j=(LED_NUM+2)/2;i<LED_NUM;i+=2,j--) {
-                        multipleLight(i,j,mrunState->currentColour);
+                    if (mrunState->times) {
+                    if (delayFlag) {
+                    if (delayTimes>0) {
+                        for (i=1,j=(LED_NUM+2)/2;i<LED_NUM;i+=2,j--) {
+                            multipleLight(i,j,mrunState->currentColour);
+                            usleep(speed_tab[mrunState->speed]);
+                        }
+                        multipleLight(LED_NUM,j,mrunState->currentColour);
+                        usleep(speed_tab[mrunState->speed]);
+                    } else delayFlag=0;
+                    delayTimes--;
+                    } else {
+                        multipleLight(0, mrunState->currentNum, mrunState->currentColour);
+                        sleep(1000);
+                    }
+                    } else {
+                        for (i=1,j=(LED_NUM+2)/2;i<LED_NUM;i+=2,j--) {
+                            multipleLight(i,j,mrunState->currentColour);
+                            usleep(speed_tab[mrunState->speed]);
+                        }
+                        multipleLight(LED_NUM,j,mrunState->currentColour);
                         usleep(speed_tab[mrunState->speed]);
                     }
-                    multipleLight(LED_NUM,j,mrunState->currentColour);
-                    usleep(speed_tab[mrunState->speed]);
                 } else {
-                    multipleLight(mrunState->num,
-                        mrunState->currentNum,
-                        mrunState->currentColour
-                    );
+                if (mrunState->times) {
+                if (delayFlag) {
+                if (delayTimes>0) {
+                     multipleLight(mrunState->num, mrunState->currentNum, mrunState->currentColour);
+                     usleep(speed_tab[mrunState->speed]);
+                     multipleLight(0, mrunState->currentNum, mrunState->currentColour);
+                     usleep(speed_tab[mrunState->speed]);
+                } else delayFlag=0;
+                delayTimes--;
+                } else {
+                    multipleLight(0, mrunState->currentNum, mrunState->currentColour);
+                    sleep(1000);
+                }
+                } else {
+                    multipleLight(mrunState->num, mrunState->currentNum, mrunState->currentColour);
                     usleep(speed_tab[mrunState->speed]);
-                    multipleLight(0,
-                        mrunState->currentNum,
-                        mrunState->currentColour
-                    );
+                    multipleLight(0, mrunState->currentNum, mrunState->currentColour);
                     usleep(speed_tab[mrunState->speed]);
+                }
                 }
             }
         break;
         default:
-            multipleLight(0,
-            mrunState->currentNum,
-            mrunState->currentColour);
+            multipleLight(0, mrunState->currentNum, mrunState->currentColour);
             sleep(1000);
         break;
     }

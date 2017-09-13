@@ -1,6 +1,10 @@
 #ifndef __LEDS_H
 #define __LEDS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define addr_led_reg0 0   //input data
 #define addr_led_reg1 1   //output data
 #define addr_led_reg2 2   //inversion
@@ -12,5 +16,9 @@ int ledsInit(void);
 void multipleLight(int num,int numflag,int colour);
 
 extern int i2cNum;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

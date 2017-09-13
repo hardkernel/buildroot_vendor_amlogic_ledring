@@ -1,6 +1,10 @@
 #ifndef __IIC_WRITE
 #define __IIC_WRITE
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,5 +23,9 @@
 extern int i2cInit(int* i2cID);
 extern int i2cRelease(int* i2cID);
 extern int i2cWriteNbyte(int* i2cID, int dev_addr, int slave_addr, int len, unsigned char data_buf[]);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

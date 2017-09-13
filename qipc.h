@@ -8,7 +8,8 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
-#include "lightDaemon.h"
+#include "leds.h"
+#include "ledClient.h"
 
 #define SLN_IPC_MQ_NAME "/tmp"
 

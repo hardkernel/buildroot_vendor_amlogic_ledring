@@ -12,36 +12,51 @@
  * sell copies of the Software.
  *
  */
-#include "clientTest.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-messageID mID;
-
-/*
-enum _COLOUR{_RED=0,_GREEN,_BLUE};
-enum _DIRECTION{_CLOCLWISE=0,_COUNTERCLOCKWISE};
-enum _REFRESH_MODE{_STATIC=0,_MOVE,_CLOSE,_OTHER};
-
-struct leds{
-    int num;
-    int currentNum;
-    int speed;	//0~10
-    enum _COLOUR currentColour;
-    enum _DIRECTION direction;
-    enum _REFRESH_MODE mode;
-};
-*/
-
+#include "ledClient.h"
 
 static struct leds state[]={
-    {1,1,1,_RED,_POSITIVE,_MOVE},
-    {6,1,6,_RED,_SKIP,_MOVE},
-    {2,2,9,_RED,_POSITIVE,_MOVE},
-    {6,6,6,_RED,_SKIP,_OTHER},
-    {2,2,9,_RED,_POSITIVE,_MOVE},
-    {6,6,6,_RED,_REVERSE,_OTHER},
-    {6,6,6,_RED,_POSITIVE,_OTHER},
-    {6,6,6,_RED,_SKIP,_OTHER},
-    {3,4,6,_RED,_SKIP,_OTHER},
+    {1,1,8,0,_RED,_POSITIVE,_STATIC},    //0
+    {1,1,8,5,_RED,_POSITIVE,_STATIC},    //1
+
+    {2,1,11,0,_RED,_POSITIVE,_MOVE},     //2
+    {2,1,11,5,_RED,_POSITIVE,_MOVE},     //3
+
+    {3,1,0,0,_RED,_POSITIVE,_MOVE},      //4
+    {3,1,0,5,_RED,_POSITIVE,_MOVE},      //5
+
+    {4,1,9,0,_RED,_POSITIVE,_MOVE},      //6
+    {4,1,9,5,_RED,_POSITIVE,_MOVE},      //7
+
+    {4,1,9,0,_RED,_REVERSE,_MOVE},       //8
+    {4,1,9,5,_RED,_REVERSE,_MOVE},       //9
+
+    {4,1,8,0,_RED,_SKIP,_MOVE},          //10
+    {4,1,8,5,_RED,_SKIP,_MOVE},          //11
+
+    {5,1,8,0,_RED,_SKIP,_CLOSE},         //12
+
+    {6,1,11,0,_RED,_SKIP,_OTHER},        //13
+    {6,1,11,5,_RED,_SKIP,_OTHER},        //14
+
+    {1,1,0,0,_RED,_SKIP,_OTHER},         //15
+    {1,1,0,5,_RED,_SKIP,_OTHER},         //16
+
+    {6,1,6,0,_RED,_POSITIVE,_OTHER},     //17
+    {6,1,6,5,_RED,_POSITIVE,_OTHER},     //18
+
+    {6,1,6,0,_RED,_REVERSE,_OTHER},      //19
+    {6,1,6,5,_RED,_REVERSE,_OTHER},      //20
+
+    {6,1,9,0,_RED,_SKIP,_OTHER},         //21
+    {6,1,9,5,_RED,_SKIP,_OTHER},         //22
+
+    {3,1,9,0,_RED,_SKIP,_OTHER},         //23
+    {3,1,9,5,_RED,_SKIP,_OTHER},         //24
+    //..........
 };
 
 int main(int argc,char* argv[]){
@@ -52,55 +67,34 @@ int main(int argc,char* argv[]){
        (strcmp(argv[1], "-l") == 0) ||
        (strcmp(argv[1], "--help") == 0))) {
        printf("Usage Options:\n");
-       printf("   lightClientTest [0] [1] [2] ... [8].\n\n");
+       printf("   lightTest [0] [1] [2] ... [24].\n\n");
        exit(1);
     } else if ( argc == 1) {
        printf("no options found!!! please run: --help\n");
        exit(1);
     }
 
-    res=sendInit(&mID);
-    if (res < 0) {
-        printf("init snedmessage err!\n");
-	return -1;
-    }
-
-    sleep(1);
     i=atoi(argv[1]);
-    if ( res > 8) {
-        return -1;
+    if ( res > 24) {
+        return;
     }
 
-    res=snedMessage(&mID,&state[i],sizeof(struct leds));
+    res = ledInit();
     if (res < 0) {
-        printf("sendMessage err!\n");
-	return -1;
+        printf("ledInit err!\n");
+        return -1;
     }
-
-    res=sendRelease(&mID);
+    sleep(1);
+    res = ledShow(&state[i]);
     if (res < 0) {
-        printf("sendRelease err!\n");
+        printf("ledShow err!\n");
         return -1;
     }
-    return 0;
-}
 
-int sendInit(messageID* id){
-    *id= mq_open(SLN_IPC_MQ_NAME, O_WRONLY);
-    if (*id < 0)
+    res = ledRelease();
+    if (res < 0) {
+        printf("ledRelease err!\n");
         return -1;
-    return 0;
-}
-
-int snedMessage(messageID* id,struct leds* message,int size){
-    if (mq_send(*id, (const char*)message, size, 0) < 0)
-        return -1;
-    return 0;
-}
-
-int sendRelease(messageID* id){
-    int ret;
-    ret = mq_close(*id);
-    if (ret != 0) return -1;
+    }
     return 0;
 }
