@@ -15,68 +15,67 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <getopt.h>
+#include <popt.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 #include "ledClient.h"
 
-static struct leds state[]={
-    {1,1,8,0,_RED,_POSITIVE,_STATIC},    //0
-    {1,1,8,5,_RED,_POSITIVE,_STATIC},    //1
-
-    {2,1,11,0,_RED,_POSITIVE,_MOVE},     //2
-    {2,1,11,5,_RED,_POSITIVE,_MOVE},     //3
-
-    {3,1,0,0,_RED,_POSITIVE,_MOVE},      //4
-    {3,1,0,5,_RED,_POSITIVE,_MOVE},      //5
-
-    {4,1,9,0,_RED,_POSITIVE,_MOVE},      //6
-    {4,1,9,5,_RED,_POSITIVE,_MOVE},      //7
-
-    {4,1,9,0,_RED,_REVERSE,_MOVE},       //8
-    {4,1,9,5,_RED,_REVERSE,_MOVE},       //9
-
-    {4,1,8,0,_RED,_SKIP,_MOVE},          //10
-    {4,1,8,5,_RED,_SKIP,_MOVE},          //11
-
-    {5,1,8,0,_RED,_SKIP,_CLOSE},         //12
-
-    {6,1,11,0,_RED,_SKIP,_OTHER},        //13
-    {6,1,11,5,_RED,_SKIP,_OTHER},        //14
-
-    {1,1,0,0,_RED,_SKIP,_OTHER},         //15
-    {1,1,0,5,_RED,_SKIP,_OTHER},         //16
-
-    {6,1,6,0,_RED,_POSITIVE,_OTHER},     //17
-    {6,1,6,5,_RED,_POSITIVE,_OTHER},     //18
-
-    {6,1,6,0,_RED,_REVERSE,_OTHER},      //19
-    {6,1,6,5,_RED,_REVERSE,_OTHER},      //20
-
-    {6,1,9,0,_RED,_SKIP,_OTHER},         //21
-    {6,1,9,5,_RED,_SKIP,_OTHER},         //22
-
-    {3,1,9,0,_RED,_SKIP,_OTHER},         //23
-    {3,1,9,5,_RED,_SKIP,_OTHER},         //24
-    //..........
+static const struct option OPTIONS[] =
+{
+    { "speed", required_argument, NULL, 's' },
+    { "rgbflag", required_argument, NULL, 'r' },
+    { "time", required_argument, NULL, 't' },
+    { "num", required_argument, NULL, 'n' },
+    { "style", required_argument, NULL, 'S' },
+    { NULL, 0, NULL, 0 },
 };
+static void printHelp(const char* s_arg) {
+    printf("\n");
+    printf("Usage: %s [options...]*\n", s_arg);
+    printf("\n");
+    printf("Options:\n");
+    printf("    -h, --help     show this help.\n");
+    printf("    -r, --rgbflag  led color flag         --range: 0: signal color 1: rgb color\n");
+    printf("    -n, --num      the numbers of led.    --range[0 ~ N]\n");
+    printf("    -s, --speed    the speed of move.     --range[0 ~ N] ms\n");
+    printf("    -t, --time     the timeout of move.   --range[0 ~ N] s . 0s mean close timeout\n");
+    printf("    -S, --style    the style of move.     --range[0 ~ max style]\n");
+    printf("\n");
+    printf("eg: %s --num=6 --rgbflag=0 --speed=300 --time=5 --style=5\n",s_arg);
+    printf("\n");
+}
 
 int main(int argc,char* argv[]){
     int res=0;
-    int i=0;
-    if (argc == 2 && (
-       (strcmp(argv[1], "-h") == 0) ||
-       (strcmp(argv[1], "-l") == 0) ||
-       (strcmp(argv[1], "--help") == 0))) {
-       printf("Usage Options:\n");
-       printf("   lightTest [0] [1] [2] ... [24].\n\n");
-       exit(1);
-    } else if ( argc == 1) {
-       printf("no options found!!! please run: --help\n");
-       exit(1);
+    int arg;
+    char mbuf[100];
+    int num, speed, time, style, rgbflag;
+
+    if (argc < 2) {
+        printHelp(argv[0]);
+        return -1;
     }
 
-    i=atoi(argv[1]);
-    if ( res > 24) {
-        return;
+    if ((2 == argc) && ((!strcmp(argv[1],"--help")) || (!strcmp(argv[1],"-h")))) {
+        printHelp(argv[0]);
+        return -1;
+   }
+
+   while ((arg = getopt_long(argc, argv, "", OPTIONS, NULL)) != -1) {
+        switch (arg) {
+        case 'n': num = atoi(optarg); break;
+        case 's': speed = atoi(optarg); break;
+        case 't': time = atoi(optarg); break;
+        case 'S': style = atoi(optarg); break;
+        case 'r': rgbflag = atoi(optarg); break;
+        case '?':
+            sprintf(mbuf,"%d",arg);
+            printf("Invalid command argument:%s\n",mbuf);
+        return -1;
+        }
     }
 
     res = ledInit();
@@ -84,17 +83,17 @@ int main(int argc,char* argv[]){
         printf("ledInit err!\n");
         return -1;
     }
-    sleep(1);
-    res = ledShow(&state[i]);
+
+    res = ledShow(num, rgbflag, speed, time, style);
     if (res < 0) {
         printf("ledShow err!\n");
         return -1;
     }
-
     res = ledRelease();
     if (res < 0) {
         printf("ledRelease err!\n");
         return -1;
     }
+
     return 0;
 }

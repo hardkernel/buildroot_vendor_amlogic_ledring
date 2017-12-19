@@ -13,6 +13,8 @@ extern "C" {
 #include <linux/i2c-dev.h>
 #include <asm-generic/errno.h>
 #include <errno.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 #define I2C_M_WR 0
 #define I2c_M_RD 1
