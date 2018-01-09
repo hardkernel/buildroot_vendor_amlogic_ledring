@@ -1,14 +1,14 @@
-TAR1=lightDaemon
+#TAR1=lightDaemon
 TAR2=ledring
 TAR3=lightTest
-PRE1=i2cWrite.c leds.c lightDaemon.c qipc.c
+#PRE1=i2cWrite.c leds.c lightDaemon.c qipc.c
 PRE2=ledClient.c
 PRE3=ledClient.c clientTest.c
 
 INCLUDES=ledClient.h
 
-$(TAR1):$(PRE1)
-	$(CC) $(CFLAGS) $(LDFLAGS) -lpthread -lrt -o $@ $^
+#$(TAR1):$(PRE1)
+#	$(CC) $(CFLAGS) $(LDFLAGS) -lpthread -lrt -o $@ $^
 
 $(TAR2):$(PRE2)
 	$(CC) -c $(CFLAGS) $(LDFLAGS) -fpic -lpthread -lrt -o $@.o $^
