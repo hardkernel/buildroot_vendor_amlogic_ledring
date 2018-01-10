@@ -74,7 +74,7 @@ int ledInit(void) {
     } else {
         keyFlag = -1;
         printf("open \"%s\" fail!\n",DEV_LEDRING_NAME);
-        return -1;
+        //return -1;
     }
 
     fp2 = open(DEV_LEDRGB_NAME, O_RDWR);
@@ -83,7 +83,7 @@ int ledInit(void) {
     else {
         rgbFlag = -1;
         printf("open \"%s\" fail!\n", DEV_LEDRGB_NAME);
-        return -1;
+        //return -1;
     }
 #endif
     return 0;

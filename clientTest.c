@@ -48,7 +48,6 @@ static void printHelp(const char* s_arg) {
     printf("    -t, --time         the timeout of move.   --range[0 ~ N] s . 0s mean close timeout\n");
     printf("    -S, --style        the style of move.     --range[0 ~ max of led style]\n");
     printf("\n");
-    printf("eg: %s --num=6  --speed=300 --time=5 --style=5\n",s_arg);
     printf("eg: %s --num=12 --times=0 --speed=300 --time=5 --style=5 --mute_led=1 --listen_led=1\n",s_arg);
     printf("\n");
 }
