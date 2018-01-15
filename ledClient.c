@@ -121,6 +121,11 @@ int ledShow(int num, int times, int speed,
                styleData.num = 6;
                printf("signal color led num out of range,use default num,please check!\n");
             }
+	    if ((style < 14) && (style > 2)) {
+                styleData.times = 1;
+                styleData.time = 1;
+                styleData.speed = 100;
+            }
             memcpy((char*)&styleData.style, (char*)&m_style[style], sizeof(styleData.style));
             ret = ioctl(fp1,CMD_LEDRING_ARG,&styleData);
         break;
